@@ -54,7 +54,25 @@ int process() {
 
     syslog(LOG_INFO, "Second display is %d x %d %dbps\n", vinfo.xres, vinfo.yres, vinfo.bits_per_pixel);
 
-    screen_resource = vc_dispmanx_resource_create(VC_IMAGE_RGB565, vinfo.xres, vinfo.yres, &image_prt);
+    /***********************************************************
+     * Name: vc_dispmanx_resource_create
+     *
+     * Arguments:
+     *       VC_IMAGE_TYPE_T type
+     *       uint32_t width
+     *       uint32_t height
+     *
+     * Description: Create a new resource (in Videocore memory)
+     *
+     * Returns: resource handle
+     *
+     ***********************************************************/
+
+    int resourceWidth = vinfo.xres / 2;
+    int resourceHeight = vinfo.yres;
+
+
+    screen_resource = vc_dispmanx_resource_create(VC_IMAGE_RGB565, resourceWidth, resourceHeight, &image_prt);
     if (!screen_resource) {
         syslog(LOG_ERR, "Unable to create screen buffer");
         close(fbfd);
@@ -71,11 +89,72 @@ int process() {
         return -1;
     }
 
-    vc_dispmanx_rect_set(&rect1, 0, 0, vinfo.xres, vinfo.yres);
+
+    // vinfo = SECONDARY fb width and height
+
+    int width = vinfo.xres / 2;
+    int height = vinfo.yres;
+    // width = 100;
+    // height = 400;
+
+    /***********************************************************
+     * Name: vc_dispmanx_rect_set
+     *
+     * Arguments:
+     *       VC_RECT_T *rect
+     *       uint32_t x_offset
+     *       uint32_t y_offset
+     *       uint32_t width
+     *       uint32_t height
+     *
+     * Description: Fills in the fields of the supplied VC_RECT_T structure
+     *
+     * Returns: 0 or failure
+     *
+     ***********************************************************/
+
+    vc_dispmanx_rect_set(&rect1, 0, 0, width, height);
+
+    // fbfd = /dev/fb1 (secondary display)
+    // fbp = pointer to pixels
+    // display = PRIMARY display
 
     while (1) {
+
+        /***********************************************************
+         * Name: vc_dispmanx_snapshot
+         *
+         * Arguments:
+         *       DISPMANX_DISPLAY_HANDLE_T display
+         *       DISPMANX_RESOURCE_HANDLE_T snapshot_resource
+         *       DISPMANX_TRANSFORM_T transform
+         *
+         * Description: Take a snapshot of a display in its current state
+         *
+         * Returns:
+         *
+         ***********************************************************/
+
+        // primary display, buffer, transformations(!)
+
         ret = vc_dispmanx_snapshot(display, screen_resource, 0);
-        vc_dispmanx_resource_read_data(screen_resource, &rect1, fbp, vinfo.xres * vinfo.bits_per_pixel / 8);
+
+        /***********************************************************
+         * Name: vc_dispmanx_resource_read_data
+         *
+         * Arguments:
+         *       DISPMANX_RESOURCE_HANDLE_T res
+         *       const VC_RECT_T * rect
+         *       void * src_address
+         *       int src_pitch
+         *
+         * Description: Copy the bitmap data from VideoCore memory
+         *
+         * Returns: 0 or failure
+         *
+         ***********************************************************/
+
+        vc_dispmanx_resource_read_data(screen_resource, &rect1, fbp, (width / 2.0) * vinfo.bits_per_pixel / 8);
         usleep(25 * 1000);
     }
 
